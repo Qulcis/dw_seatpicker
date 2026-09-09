@@ -348,9 +348,9 @@
 
     <!-- 학생 명단 수정 모달 UI -->
     <div id="studentModal">
-        <h3 style="margin-top: 0; font-size: 16px;">학생 명단 입력 (줄바꿈으로 구분)</h3>
+        <h3 style="margin-top: 0; font-size: 16px;">학생 명단 입력 (쉼표로 구분)</h3>
         <p style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">
-            첫 번째 줄부터 순서대로 1번, 2번, 3번...으로 자동 매칭됩니다.
+            순서대로 1번, 2번, 3번...으로 자동 매칭됩니다.
         </p>
         <textarea id="studentNameInput" rows="8" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-family: inherit; font-size: 14px;" placeholder="김철수&#10;이영희&#10;박민수..."></textarea>
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
@@ -515,7 +515,7 @@
             if (!inputText) {
                 localStorage.removeItem(STORAGE_KEY);
             } else {
-                const lines = inputText.split('\n').map(line => line.trim()).filter(line => line !== '');
+                const lines = inputText.split(',').map(line => line.trim()).filter(line => line !== '');
                 const newList = lines.map((name, index) => ({
                     num: index + 1,
                     name: name
@@ -538,7 +538,7 @@
                 if (savedData) {
                     try {
                         const parsed = JSON.parse(savedData);
-                        document.getElementById('studentNameInput').value = parsed.map(s => s.name).join('\n');
+                        document.getElementById('studentNameInput').value = parsed.map(s => s.name).join(',');
                     } catch (e) {
                         document.getElementById('studentNameInput').value = '';
                     }
