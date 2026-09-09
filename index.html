@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A학년 A반 자리배치표</title>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #f3f4f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 상단 컨트롤 영역 */
+        .controls {
+            width: 1000px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .control-group-left,
+        .control-group-right {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .controls button {
+            border: none;
+            padding: 8px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            color: #ffffff;
+        }
+
+        .controls .btn-primary { background-color: #2563eb; }
+        .controls .btn-primary:hover { background-color: #1d4ed8; }
+
+        .controls .btn-confirm { background-color: #059669; }
+        .controls .btn-confirm:hover { background-color: #047857; }
+
+        .controls .btn-secondary { background-color: #4b5563; }
+        .controls .btn-secondary:hover { background-color: #374151; }
+
+        .controls .print-btn { background-color: #10b981; }
+        .controls .print-btn:hover { background-color: #059669; }
+
+        .controls select {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            background-color: #ffffff;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* 학생 명단 수정 모달 UI */
+        #studentModal {
+            display: none;
+            width: 1000px;
+            background: #ffffff;
+            padding: 16px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 16px;
+        }
+
+        /* A4 Landscape 컨테이너 */
+        .paper-container {
+            width: 1000px;
+            height: auto;
+            min-height: 520px;
+            background: #ffffff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 24px;
+            display: flex;
+            flex-direction: row;
+            gap: 24px;
+            position: relative;
+            border-radius: 2px;
+        }
+
+        /* 좌측 학생 명단 - 웹 화면에서는 숨김 */
+        .student-list-group {
+            width: 128px;
+            flex-shrink: 0;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .classroom-layout-group {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            height: 100%;
+            padding-left: 8px;
+            padding-top: 0;
+        }
+
+        /* 웹 화면 전용: 제목 및 하단 문구 완전 숨김 */
+        .header-title {
+            display: none;
+            text-align: center;
+            padding-top: 4px;
+            padding-bottom: 4px;
+            margin-left: 0;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            color: #111827;
+            margin: 0;
+        }
+
+        .notice-message {
+            display: none;
+            position: absolute;
+            bottom: 14mm;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            font-size: 18px;
+            font-weight: 400;
+            letter-spacing: 0.1em;
+            color: #111827;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* 학생 시점: 교탁 상단 배치 */
+        .teacher-desk-wrapper {
+            order: 1;
+            display: flex;
+            justify-content: center;
+            margin: 0 0 16px 0;
+        }
+
+        .teacher-desk {
+            width: 50%;
+            border: 1px solid #111827;
+            padding: 6px 0;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: 1em;
+            padding-left: 1em;
+        }
+
+        /* 학생 시점: 책상 배치 180도 회전 */
+        .desk-grid-container {
+            order: 2;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 64px;
+            padding: 0 8px;
+            transform: rotate(180deg);
+        }
+
+        .desk-grid {
+            width: 100%;
+        }
+
+        .desk-grid td {
+            height: 62px;
+            width: 50%;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 18px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* 회전된 셀 안의 숫자를 정방향으로 재회전 */
+        .desk-grid td .seat-num {
+            display: inline-block;
+            transform: rotate(180deg);
+        }
+
+        /* Table 기본 스타일 */
+        table, th, td {
+            border: 1px solid #111827;
+            border-collapse: collapse;
+        }
+
+        /* 명단 표 */
+        .student-table {
+            width: 100%;
+        }
+
+        .student-table th {
+            padding: 1px 0;
+            font-size: 11px;
+            text-align: center;
+            line-height: 1.25;
+            font-weight: 700;
+            background-color: #f3f4f6;
+        }
+
+        .student-table td {
+            padding: 1px 0;
+            font-size: 11px;
+            text-align: center;
+            line-height: 1.25;
+            font-weight: 400;
+        }
+
+        .bg-gray-filled {
+            background-color: #8e8e8e !important;
+        }
+
+        /* 웹 화면용: 이름 숨김 (번호만 표기) */
+        .seat-name {
+            display: none;
+        }
+
+        /* ==========================================
+           [인쇄 전용] 선생님 시점 (모든 텍스트 복원 및 정방향)
+        ========================================== */
+        @media print {
+            @page {
+                size: A4 landscape;
+                margin: 0;
+            }
+            html, body {
+                width: 297mm;
+                height: 210mm;
+                background-color: #ffffff;
+                padding: 0;
+                margin: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .controls, #studentModal {
+                display: none !important;
+            }
+            .paper-container {
+                width: 1000px !important;
+                height: 700px !important;
+                padding: 10mm !important;
+                box-shadow: none;
+                transform: scale(calc(297mm / 1000px));
+                transform-origin: center center;
+            }
+
+            .classroom-layout-group {
+                justify-content: flex-start;
+                padding-top: 8px;
+            }
+
+            /* 인쇄 시 숨겨진 텍스트(제목, 안내 문구) 모두 복원 */
+            .header-title {
+                display: block !important;
+                order: 1;
+                margin-left: -128px !important;
+            }
+
+            .notice-message {
+                display: block !important;
+            }
+
+            /* 인쇄 시 좌측 명단 표 표시 */
+            .student-list-group {
+                display: flex !important;
+            }
+
+            /* 선생님 시점: 책상 배치 및 정방향 복원 */
+            .desk-grid-container {
+                order: 2;
+                transform: none !important;
+                padding-top: 16px !important;
+            }
+
+            .desk-grid td {
+                font-size: 16px;
+            }
+
+            .desk-grid td .seat-num {
+                transform: none !important;
+            }
+
+            .teacher-desk-wrapper {
+                order: 3;
+                margin: 8px 0 !important;
+                padding-top: 16px !important;
+            }
+
+            .teacher-desk {
+                padding: 4px 0;
+            }
+
+            /* 인쇄 시 이름 표시 (번호 바로 옆 한 줄 표기) */
+            .seat-name {
+                display: inline !important;
+                margin-left: 4px;
+                font-size: 14px;
+                font-weight: 500;
+                transform: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 상단 컨트롤 영역 -->
+    <div class="controls">
+        <div class="control-group-left">
+            <button class="btn-primary" onclick="shuffleSeats()">🎲 자리 배치</button>
+            <button class="btn-confirm" onclick="finalizeSeatsToDB()">✅ 결정</button>
+        </div>
+        <div class="control-group-right">
+            <select id="recordSelect" onchange="loadSelectedSeatsFromDB()">
+                <option value="">-- 회차 --</option>
+            </select>
+            <button class="btn-secondary" onclick="toggleStudentModal()">📋 명단</button>
+            <button class="print-btn" onclick="handlePrint()">🖨️ 인쇄</button>
+        </div>
+    </div>
+
+    <!-- 학생 명단 수정 모달 UI -->
+    <div id="studentModal">
+        <h3 style="margin-top: 0; font-size: 16px;">학생 명단 입력 (줄바꿈으로 구분)</h3>
+        <p style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">
+            첫 번째 줄부터 순서대로 1번, 2번, 3번...으로 자동 매칭됩니다.
+        </p>
+        <textarea id="studentNameInput" rows="8" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-family: inherit; font-size: 14px;" placeholder="김철수&#10;이영희&#10;박민수..."></textarea>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+            <button onclick="saveStudentListToStorage()" style="background-color: #10b981; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">저장하기</button>
+            <button onclick="toggleStudentModal()" style="background-color: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">취소</button>
+        </div>
+    </div>
+
+    <!-- 자리배치표 컨테이너 -->
+    <div class="paper-container">
+        
+        <!-- [GROUP 1] 좌측 학생 명단 (인쇄 시에만 표시) -->
+        <div class="student-list-group">
+            <table class="student-table">
+                <thead>
+                    <tr>
+                        <th>번호</th>
+                        <th>이름</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- [GROUP 2] 우측 강의실 자리 배치 영역 -->
+        <div class="classroom-layout-group">
+            
+            <!-- Header Title (인쇄 시에만 출력) -->
+            <header class="header-title">
+                <h1>★ A학년 A반 자리배치표 ★</h1>
+            </header>
+
+            <!-- 교탁 (웹 화면: 맨 위 / 인쇄 시: 맨 아래) -->
+            <div class="teacher-desk-wrapper">
+                <div class="teacher-desk">
+                    교 탁
+                </div>
+            </div>
+
+            <!-- Desk Blocks Grid -->
+            <div class="desk-grid-container">
+                
+                <!-- Left Block -->
+                <table class="desk-grid">
+                    <tbody>
+                        <tr>
+                            <td class="bg-gray-filled"></td>
+                            <td class="bg-gray-filled"></td>
+                        </tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                    </tbody>
+                </table>
+
+                <!-- Middle Block -->
+                <table class="desk-grid">
+                    <tbody>
+                        <tr>
+                            <td class="bg-gray-filled"></td>
+                            <td></td>
+                        </tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                    </tbody>
+                </table>
+
+                <!-- Right Block -->
+                <table class="desk-grid">
+                    <tbody>
+                        <tr>
+                            <td class="bg-gray-filled"></td>
+                            <td class="bg-gray-filled"></td>
+                        </tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                        <tr><td></td><td></td></tr>
+                    </tbody>
+                </table>
+
+            </div>
+
+            <!-- 하단 안내 문구 (인쇄 시에만 출력) -->
+            <div class="notice-message">
+                - 선생님의 지시 외 자리 이동 금지 -
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'classroom_student_list';
+
+        // 피셔-예이츠 셔플 함수
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // 실제 유효한 이름이 하나라도 입력되어 있는지 체크
+        function hasCustomStudentNames() {
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            if (!savedData) return false;
+            try {
+                const parsed = JSON.parse(savedData);
+                if (!Array.isArray(parsed) || parsed.length === 0) return false;
+                return parsed.some(s => s.name && s.name.trim() !== '');
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // 인쇄 버튼 처리 (명단 미입력 상태에서 인쇄 시만 차단 및 팝업)
+        function handlePrint() {
+            if (!hasCustomStudentNames()) {
+                alert("인쇄를 진행하려면 먼저 학생 명단을 입력해야 합니다.");
+                toggleStudentModal();
+                return;
+            }
+            window.print();
+        }
+
+        // 로컬스토리지에서 학생 명단 조회 (명단이 1명만 입력되어도 항상 1~31번 31개 전체 구조 유지)
+        function getStudentList() {
+            let nameMap = {};
+            const savedData = localStorage.getItem(STORAGE_KEY);
+            if (savedData) {
+                try {
+                    const parsed = JSON.parse(savedData);
+                    if (Array.isArray(parsed)) {
+                        parsed.forEach(s => {
+                            if (s.num) nameMap[s.num] = s.name || '';
+                        });
+                    }
+                } catch (e) {
+                    console.error("로컬스토리지 데이터 파싱 실패", e);
+                }
+            }
+
+            return Array.from({ length: 31 }, (_, i) => ({
+                num: i + 1,
+                name: nameMap[i + 1] || ''
+            }));
+        }
+
+        // 명단 저장 (입력한 수만큼 저장되며, 미입력 시 초기화)
+        function saveStudentListToStorage() {
+            const inputText = document.getElementById('studentNameInput').value.trim();
+            
+            if (!inputText) {
+                localStorage.removeItem(STORAGE_KEY);
+            } else {
+                const lines = inputText.split('\n').map(line => line.trim()).filter(line => line !== '');
+                const newList = lines.map((name, index) => ({
+                    num: index + 1,
+                    name: name
+                }));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(newList));
+            }
+            
+            toggleStudentModal();
+            loadStudentData();
+        }
+
+        // 모달 토글
+        function toggleStudentModal() {
+            const modal = document.getElementById('studentModal');
+            const isHidden = modal.style.display === 'none' || modal.style.display === '';
+            modal.style.display = isHidden ? 'block' : 'none';
+
+            if (isHidden) {
+                const savedData = localStorage.getItem(STORAGE_KEY);
+                if (savedData) {
+                    try {
+                        const parsed = JSON.parse(savedData);
+                        document.getElementById('studentNameInput').value = parsed.map(s => s.name).join('\n');
+                    } catch (e) {
+                        document.getElementById('studentNameInput').value = '';
+                    }
+                } else {
+                    document.getElementById('studentNameInput').value = '';
+                }
+            }
+        }
+
+        // 1. 좌측 명단 표 (1~31번 순서 고정) 렌더링
+        function renderStudentList(studentData) {
+            const studentTableBody = document.getElementById('studentTableBody');
+            const sortedData = [...studentData].sort((a, b) => a.num - b.num);
+
+            studentTableBody.innerHTML = sortedData.map(student => `
+                <tr>
+                    <td>${student.num}</td>
+                    <td>${student.name || ''}</td>
+                </tr>
+            `).join('');
+        }
+
+        // 2. 책상 그리드 렌더링 (번호 및 이름 할당)
+        function renderDeskGrid(layoutNumbers) {
+            const localStudentList = getStudentList();
+            const studentMap = new Map(localStudentList.map(s => [s.num, s.name]));
+            const availableDesks = document.querySelectorAll('.desk-grid td:not(.bg-gray-filled)');
+
+            availableDesks.forEach((desk, index) => {
+                if (index < layoutNumbers.length) {
+                    const num = layoutNumbers[index];
+                    const name = studentMap.get(num) || '';
+                    desk.innerHTML = `<span class="seat-num">${num}</span><span class="seat-name">${name}</span>`;
+                } else {
+                    desk.innerHTML = '';
+                }
+            });
+        }
+
+        // 현재 책상에 배치되어 있는 학생 번호 배열 추출
+        function getCurrentSeatNumbers() {
+            const availableDesks = document.querySelectorAll('.desk-grid td:not(.bg-gray-filled)');
+            const seatNumbers = [];
+
+            availableDesks.forEach(desk => {
+                const numElem = desk.querySelector('.seat-num');
+                if (numElem && numElem.textContent) {
+                    seatNumbers.push(parseInt(numElem.textContent, 10));
+                }
+            });
+
+            return seatNumbers;
+        }
+
+        // DB에서 회차 목록 가져와 드롭다운 채우기
+        async function fetchRecordList() {
+            try {
+                const response = await fetch('/api/seats?list=true');
+                const data = await response.json();
+
+                const selectElem = document.getElementById('recordSelect');
+                selectElem.innerHTML = '<option value="">-- 회차 --</option>';
+
+                if (data.success && data.records && data.records.length > 0) {
+                    data.records.forEach(record => {
+                        const option = document.createElement('option');
+                        option.value = record.id;
+                        
+                        const dateStr = record.created_at ? record.created_at.replace('T', ' ').substring(0, 16) : '';
+                        const tag = record.is_temp ? '[임시]' : '[결정]';
+                        option.textContent = `${tag} ${record.id}회차 (${dateStr})`;
+                        
+                        selectElem.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error("회차 목록 로드 실패:", error);
+            }
+        }
+
+        // 자리 재배치 시 임시 저장 수행 (DB에는 숫자 배열만 전송)
+        async function saveTempSeatsToDB(seatNumbers) {
+            try {
+                const response = await fetch('/api/seats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        layout: seatNumbers,
+                        is_temp: true 
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    await fetchRecordList();
+                    if (result.recordId) {
+                        document.getElementById('recordSelect').value = result.recordId;
+                    }
+                }
+            } catch (error) {
+                console.error("임시 저장 중 오류 발생:", error);
+            }
+        }
+
+        // [결정] 버튼 클릭 시: 확정 저장
+        async function finalizeSeatsToDB() {
+            const seatNumbers = getCurrentSeatNumbers();
+            if (seatNumbers.length === 0) {
+                alert("결정할 자리 데이터가 없습니다.");
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/seats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        layout: seatNumbers,
+                        finalize: true
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(`${result.recordId}회차로 자리가 최종 결정되었습니다!`);
+                    await fetchRecordList();
+                    document.getElementById('recordSelect').value = result.recordId;
+                } else {
+                    alert("결정 저장 실패: " + result.message);
+                }
+            } catch (error) {
+                console.error("결정 처리 오류:", error);
+                alert("결정 처리 도중 오류가 발생했습니다.");
+            }
+        }
+
+        // 드롭다운 선택 변경 시 즉시 자동 불러오기
+        async function loadSelectedSeatsFromDB() {
+            const selectElem = document.getElementById('recordSelect');
+            const selectedId = selectElem.value;
+
+            if (!selectedId) return;
+
+            try {
+                const response = await fetch(`/api/seats?id=${selectedId}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    alert(data.message || "해당 회차 데이터를 불러올 수 없습니다.");
+                    return;
+                }
+
+                renderDeskGrid(data.layout);
+            } catch (error) {
+                console.error("회차 데이터 로드 오류:", error);
+                alert("데이터를 불러오는 중 오류가 발생했습니다.");
+            }
+        }
+
+        // '자리 배치' 버튼 실행 시 (배치 후 자동으로 임시 저장)
+        async function shuffleSeats() {
+            const studentList = getStudentList();
+            const numbers = studentList.map(s => s.num);
+            const shuffledNumbers = shuffle([...numbers]);
+            renderDeskGrid(shuffledNumbers);
+
+            // 임시 저장 실행
+            await saveTempSeatsToDB(shuffledNumbers);
+        }
+
+        // 메인 데이터 로드 (초기 구동)
+        function loadStudentData() {
+            const studentList = getStudentList();
+            renderStudentList(studentList);
+            shuffleSeats();
+        }
+
+        // 페이지 초기화 실행
+        window.addEventListener('DOMContentLoaded', () => {
+            loadStudentData();
+            fetchRecordList();
+        });
+    </script>
+</body>
+</html>
